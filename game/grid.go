@@ -27,30 +27,30 @@ func (c *Cell) String() string {
 type Grid = map[Cell]bool
 
 func (g *GameState) AddCells(cells []Cell) {
+	logger.Trace("Entering AddCells with %d cells", len(cells))
+	defer logger.Trace("Exiting AddCells")
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
 	for _, cell := range cells {
 		g.grid[cell] = true
 	}
-	logger.Trace("AddCells: count=%d total=%d", len(cells), len(g.grid))
 }
 
 func (g *GameState) AddCell(c Cell) {
+	logger.Trace("Adding single cell: (%d, %d)", c.X, c.Y)
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
 	g.grid[c] = true
-
-	logger.Trace("AddCell: %v total=%d", c, len(g.grid))
 }
 
 func (g *GameState) RemoveCell(c Cell) {
+	logger.Trace("Removing single cell: (%d, %d)", c.X, c.Y)
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
 	delete(g.grid, c)
-	logger.Trace("RemoveCell: %v total=%d", c, len(g.grid))
 }
 
 func (g *GameState) GetMaxX() int {
@@ -89,22 +89,24 @@ func (g *GameState) GetBounds() (int, int) {
 	return maxX + 1, maxY + 1
 }
 
-func (g *GameState) Get2DMatrix() [][]int {
+func (g *GameState) Bitmap() [][]bool {
+	logger.Trace("Entering Bitmap")
+	defer logger.Trace("Exiting Bitmap")
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
 
-	matrix := make([][]int, g.height)
+	matrix := make([][]bool, g.height)
 	for i := range matrix {
-		matrix[i] = make([]int, g.width)
+		matrix[i] = make([]bool, g.width)
 	}
 
 	for cell := range g.grid {
 		if cell.X < 0 || cell.X >= g.width || cell.Y < 0 || cell.Y >= g.height {
+			logger.Warn("Cell (%d, %d) is out of bounds and will be ignored", cell.X, cell.Y)
 			continue
 		}
-		matrix[cell.Y][cell.X] = 1
+		matrix[cell.Y][cell.X] = true
 	}
 
-	logger.Trace("Get2DMatrix: size=%dx%d", len(matrix[0]), len(matrix))
 	return matrix
 }

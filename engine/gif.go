@@ -13,11 +13,13 @@ import (
 )
 
 func PrepareGIFFromImages(imgs []*image.RGBA, delay int, initialFrameDelay int) (*gif.GIF, error) {
-	logger.Info("Preparing GIF: frames=%d delay=%dms initialFrameDelay=%dms", len(imgs), delay, initialFrameDelay)
+	logger.Trace("Entering PrepareGIFFromImages with %d images, delay %d, initialFrameDelay %d", len(imgs), delay, initialFrameDelay)
+	defer logger.Trace("Exiting PrepareGIFFromImages")
+
 	gifImg := &gif.GIF{
 		Image:     make([]*image.Paletted, len(imgs)),
 		Delay:     make([]int, len(imgs)),
-		LoopCount: 0,
+		LoopCount: 0, // Loop forever
 	}
 
 	// Create a simple black and white palette
@@ -30,22 +32,21 @@ func PrepareGIFFromImages(imgs []*image.RGBA, delay int, initialFrameDelay int) 
 		palettedImg := image.NewPaletted(img.Bounds(), palette)
 		draw.Draw(palettedImg, palettedImg.Rect, img, image.Point{}, draw.Src)
 		gifImg.Image[i] = palettedImg
-		gifImg.Delay[i] = delay / 10
-		if i < 3 || i == len(imgs)-1 {
-			logger.Trace("Prepared frame %d/%d", i+1, len(imgs))
-		}
+		gifImg.Delay[i] = delay / 10 // delay is in 100ths of a second
 	}
 
 	if initialFrameDelay > 0 {
-		gifImg.Delay[0] = initialFrameDelay / 10
+		gifImg.Delay[0] = initialFrameDelay / 10 // delay is in 100ths of a second
 	}
 
-	logger.Debug("GIF prepared: palettedFrames=%d", len(gifImg.Image))
+	logger.Info("GIF preparation complete with %d frames", len(gifImg.Image))
 	return gifImg, nil
 }
 
 func WriteGIFToFile(g *gif.GIF, destPath string) error {
-	logger.Info("Writing GIF to file: %s", destPath)
+	logger.Trace("Entering WriteGIFToFile with destPath %s", destPath)
+	defer logger.Trace("Exiting WriteGIFToFile")
+
 	f, err := os.Create(destPath)
 	if err != nil {
 		logger.Error("Failed to create file %s: %v", destPath, err)
@@ -54,16 +55,17 @@ func WriteGIFToFile(g *gif.GIF, destPath string) error {
 	defer f.Close()
 
 	if err := gif.EncodeAll(f, g); err != nil {
-		logger.Error("Failed to encode GIF to file: %v", err)
+		logger.Error("Failed to encode GIF: %v", err)
 		return err
 	}
 
-	logger.Info("GIF successfully written: %s", destPath)
 	return nil
 }
 
 func GIFToBase64(g *gif.GIF) (string, error) {
-	logger.Debug("Encoding GIF to base64")
+	logger.Trace("Entering GIFToBase64")
+	defer logger.Trace("Exiting GIFToBase64")
+
 	var buf bytes.Buffer
 	if err := gif.EncodeAll(&buf, g); err != nil {
 		logger.Error("Failed to encode GIF to buffer: %v", err)
@@ -71,6 +73,5 @@ func GIFToBase64(g *gif.GIF) (string, error) {
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
-	logger.Debug("Base64 encoding complete: bytes=%d", len(encoded))
 	return encoded, nil
 }

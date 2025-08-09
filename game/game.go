@@ -34,6 +34,9 @@ func (g *GameState) countNeighbors(c Cell) int {
 }
 
 func (g *GameState) Update() (added []Cell, removed []Cell) {
+	logger.Trace("Entering GameState.Update")
+	defer logger.Trace("Exiting GameState.Update")
+
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 
@@ -68,6 +71,7 @@ func (g *GameState) Update() (added []Cell, removed []Cell) {
 			removed = append(removed, cell)
 		}
 	}
+	logger.Trace("%d cells added, %d cells removed", len(added), len(removed))
 
 	// make sure the grid size is consistent
 	// if the new cells are outside the bounds
@@ -93,10 +97,6 @@ func (g *GameState) Update() (added []Cell, removed []Cell) {
 
 	g.grid = newGrid
 
-	if len(added) > 0 || len(removed) > 0 {
-		logger.Trace("Update: added=%d removed=%d", len(added), len(removed))
-	}
-
 	return added, removed
 }
 
@@ -118,12 +118,12 @@ func (g *GameState) PrintGrid() {
 }
 
 func NewGameState(width, height int) *GameState {
+	logger.Trace("Creating new game state with width %d and height %d", width, height)
 	gameState := &GameState{
 		width:  width,
 		height: height,
 		grid:   make(Grid),
 	}
 
-	logger.Debug("NewGameState: %dx%d", width, height)
 	return gameState
 }

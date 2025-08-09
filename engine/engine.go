@@ -1,66 +1,46 @@
 package engine
 
 import (
-	"fmt"
 	"image"
-	"image/png"
-	"os"
 
 	"github.com/henilmalaviya/qr-dance/game"
 	"github.com/henilmalaviya/qr-dance/util/logger"
 )
 
-func NewGameFromQRMatrix(matrix [][]int) *game.GameState {
-	logger.Debug("Creating game from matrix: w=%d h=%d", len(matrix[0]), len(matrix))
+func NewGameFromBitmap(matrix [][]bool) *game.GameState {
+	logger.Trace("Entering NewGameFromBitmap")
+	defer logger.Trace("Exiting NewGameFromBitmap")
+
 	g := game.NewGameState(len(matrix[0]), len(matrix))
 
-	// add cells to the game grid based on the matrix
-	added := 0
+	// move all cell's x and y into single array
+	cells := make([]game.Cell, 0, len(matrix)*len(matrix[0]))
 	for y := range matrix {
 		for x := range matrix[y] {
-			if matrix[y][x] == 1 {
-				g.AddCell(*game.NewCellFromCords(x, y))
-				added++
+			if matrix[y][x] {
+				cells = append(cells, *game.NewCellFromCords(x, y))
 			}
 		}
 	}
-	logger.Debug("Initial live cells added: %d", added)
+	g.AddCells(cells)
 
 	return g
 }
 
 func RunTicks(g *game.GameState, totalTicks int, scaleFactor int) []*image.RGBA {
-	logger.Debug("RunTicks start: totalTicks=%d scale=%d", totalTicks, scaleFactor)
+	logger.Trace("Entering RunTicks with totalTicks=%d, scaleFactor=%d", totalTicks, scaleFactor)
+	defer logger.Trace("Exiting RunTicks")
+
 	images := make([]*image.RGBA, totalTicks)
 
 	for i := 0; i < totalTicks; i++ {
+		logger.Debug("Running tick %d of %d", i+1, totalTicks)
 		// get matrix -> draw it to png -> upscale it
-		images[i] = UpscalePNGImage(DrawMatrixToPNG(g.Get2DMatrix()), scaleFactor)
+		images[i] = UpscalePNGImage(DrawBitmapToImage(g.Bitmap()), scaleFactor)
 
-		added, removed := g.Update()
-		if i < 5 || (i%50 == 0) || i == totalTicks { // sample logs
-			logger.Trace("tick=%d added=%d removed=%d", i, len(added), len(removed))
-		}
+		// Update game state
+		g.Update()
 	}
 
-	logger.Debug("RunTicks end: frames=%d", len(images))
 	return images
-}
-
-func SaveImageToFile(img *image.RGBA, path string) error {
-	logger.Info("Saving image to file: %s", path)
-	f, err := os.Create(path)
-	if err != nil {
-		logger.Error("Failed to create file %s: %v", path, err)
-		return fmt.Errorf("failed to create file %s: %w", path, err)
-	}
-	defer f.Close()
-
-	if err := png.Encode(f, img); err != nil {
-		logger.Error("Failed to encode image to file %s: %v", path, err)
-		return fmt.Errorf("failed to encode image to file %s: %w", path, err)
-	}
-
-	logger.Info("Image saved to file: %s", path)
-	return nil
 }
